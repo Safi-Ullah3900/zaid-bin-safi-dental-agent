@@ -204,6 +204,20 @@ Rules of engagement:
 """
 
 # ================= SIDEBAR CONFIGURATION =================
+# 🌐 Sidebar mein language switches
+selected_lang = st.sidebar.radio(
+    "🌐 Select Language / زبان منتخب کریں",
+    ["Default (Auto)", "English", "Roman Urdu", "العربية (Arabic)"]
+)
+
+# Language instructions jo backend prompt ke sath attach hongi
+lang_instruction = ""
+if selected_lang == "English":
+    lang_instruction = "\n[System Force: Client selected English. Respond strictly in English.]"
+elif selected_lang == "Roman Urdu":
+    lang_instruction = "\n[System Force: Client selected Roman Urdu. Respond strictly in Roman Urdu/Hinglish.]"
+elif selected_lang == "العربية (Arabic)":
+    lang_instruction = "\n[System Force: Client selected Arabic. Respond strictly in professional Arabic language.]"
 with st.sidebar:
     st.markdown("""
     <div class="sidebar-header">
@@ -269,6 +283,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Initialize Session State values
+# Demo counter aur lock variables initialize karein
+if "message_count" not in st.session_state:
+    st.session_state.message_count = 0
+if "is_unlocked" not in st.session_state:
+    st.session_state.is_unlocked = False
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
@@ -309,10 +328,23 @@ if "chat" not in st.session_state:
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+# ====== DEMO MODE SECURITY GUARD ======
+DEMO_MODE = True  # Deal final hone par isey False kar dena bas!
+MAX_FREE_MESSAGES = 10
 
+if DEMO_MODE and st.session_state.message_count >= MAX_FREE_MESSAGES and not st.session_state.is_unlocked:
+    st.error("🛑 Demo limit exceeded! (10 Messages limit reached)")
+    input_pass = st.text_input("Enter Admin Password to unlock unlimited access:", type="password")
+    if input_pass == "Zaid123":
+        st.session_state.is_unlocked = True
+        st.success("🔓 App successfully unlocked!")
+        st.rerun()
+    elif input_pass:
+        st.error("Wrong Password! Try again.")
+    st.stop()  # 🔥 Yeh line niche wale chat box ko render hi nahi hone degi jab tak lock na khule!
 # User input & Response Generation
 if user_prompt := st.chat_input("Type your message here... (e.g. 'I want to book an appointment')"):
-    
+    st.session_state.message_count += 1  # 🌟 Counter ko +1 karne ke liye
     # Render user prompt
     st.session_state.messages.append({"role": "user", "content": user_prompt})
     with st.chat_message("user"):
