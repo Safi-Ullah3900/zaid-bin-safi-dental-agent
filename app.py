@@ -3,6 +3,8 @@ import os
 import json
 import hashlib
 import time
+import asyncio
+import edge_tts
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -27,6 +29,28 @@ load_dotenv()
 def get_gemini_client(api_key: str):
     return genai.Client(api_key=api_key)
 
+# Helper function to generate premium natural voice reply asynchronously
+def generate_sadaf_voice(text, lang):
+    # Select the most natural human female voice based on language framework
+    if lang == "English":
+        voice_model = "en-US-EmmaNeural"
+    elif lang == "العربية (Arabic)":
+        voice_model = "ar-AE-FatimaNeural"
+    else:
+        voice_model = "ur-PK-UzmaNeural" # Uzma reads Urdu & Roman Urdu with beautiful realism
+        
+    async def save_audio():
+        communicate = edge_tts.Communicate(text, voice_model)
+        await communicate.save("sadaf_reply.mp3")
+        
+    try:
+        # Run the async loop inside Streamlit's sync runtime environment
+        asyncio.run(save_audio())
+        return "sadaf_reply.mp3"
+    except Exception as voice_err:
+        st.warning(f"🎙️ Voice generation skipped: {voice_err}")
+        return None
+
 # Set up page configurations
 st.set_page_config(
     page_title="Zaid Bin Safi Smile Dental Clinic - Virtual Assistant",
@@ -38,133 +62,26 @@ st.set_page_config(
 # Custom premium medical-themed CSS styling
 st.markdown("""
 <style>
-    /* Main body background color */
-    .stApp {
-        background-color: #f8fafc;
-    }
-    
-    /* Title header style */
+    .stApp { background-color: #f8fafc; }
     .main-header {
         background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
-        padding: 2rem;
-        border-radius: 16px;
-        color: white;
-        margin-bottom: 2rem;
+        padding: 2rem; border-radius: 16px; color: white; margin-bottom: 2rem;
         box-shadow: 0 4px 15px rgba(13, 148, 136, 0.15);
     }
-    
-    .main-header h1 {
-        color: white !important;
-        font-family: 'Inter', sans-serif;
-        font-weight: 700;
-        margin: 0;
-        font-size: 2.2rem;
-    }
-    
-    .main-header p {
-        color: #ccfbf1 !important;
-        margin: 0.5rem 0 0 0;
-        font-size: 1.1rem;
-    }
-    
-    /* Sidebar styling */
-    section[data-testid="stSidebar"] {
-        background-color: #ffffff;
-        border-right: 1px solid #e2e8f0;
-    }
-    
-    section[data-testid="stSidebar"] .stMarkdown {
-        font-family: 'Inter', sans-serif;
-    }
-    
-    /* Explicit dark styling for sidebar text elements for visibility */
-    section[data-testid="stSidebar"] p, 
-    section[data-testid="stSidebar"] li, 
-    section[data-testid="stSidebar"] span, 
-    section[data-testid="stSidebar"] strong {
-        color: #1e293b !important;
-    }
-    
-    section[data-testid="stSidebar"] h1, 
-    section[data-testid="stSidebar"] h2, 
-    section[data-testid="stSidebar"] h4 {
-        color: #0f766e !important;
-    }
-    
-    /* Sidebar header banner */
-    .sidebar-header {
-        background: #1E3A8A;
-        color: white;
-        padding: 1.5rem 1rem;
-        border-radius: 12px;
-        margin-bottom: 1.5rem;
-        text-align: center;
-        box-shadow: 0 4px 10px rgba(30, 58, 138, 0.2);
-    }
-    
-    /* Status Indicator Badge */
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        background-color: #d1fae5;
-        color: #065f46;
-        padding: 0.25rem 0.75rem;
-        border-radius: 9999px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        margin-top: 0.5rem;
-    }
-    
-    .status-dot {
-        height: 8px;
-        width: 8px;
-        background-color: #10b981;
-        border-radius: 50%;
-        display: inline-block;
-        margin-right: 6px;
-    }
-    
-    /* Service Card Styling */
-    .service-card {
-        background-color: #f1f5f9;
-        border-left: 4px solid #0d9488;
-        padding: 0.75rem;
-        border-radius: 0 8px 8px 0;
-        margin-bottom: 0.75rem;
-    }
-    
-    .service-name {
-        font-weight: 600;
-        color: #0f766e;
-        font-size: 0.95rem;
-    }
-    
-    .service-details {
-        font-size: 0.85rem;
-        color: #64748b;
-    }
-    
-    /* Message styling override */
-    .stChatMessage {
-        margin-bottom: 1rem;
-        border-radius: 12px;
-    }
-    
-    /* Explicit dark styling for chat messages for visibility */
-    .stChatMessage p, 
-    .stChatMessage li, 
-    .stChatMessage span, 
-    .stChatMessage strong {
-        color: #222222 !important;
-    }
-    
-    /* Custom divider */
-    .teal-divider {
-        height: 2px;
-        background: linear-gradient(90deg, #0d9488 0%, rgba(13, 148, 136, 0.1) 100%);
-        margin: 1.5rem 0;
-        border-radius: 2px;
-    }
+    .main-header h1 { color: white !important; font-family: 'Inter', sans-serif; font-weight: 700; margin: 0; font-size: 2.2rem; }
+    .main-header p { color: #ccfbf1 !important; margin: 0.5rem 0 0 0; font-size: 1.1rem; }
+    section[data-testid="stSidebar"] { background-color: #ffffff; border-right: 1px solid #e2e8f0; }
+    section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] li, section[data-testid="stSidebar"] span, section[data-testid="stSidebar"] strong { color: #1e293b !important; }
+    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h4 { color: #0f766e !important; }
+    .sidebar-header { background: #1E3A8A; color: white; padding: 1.5rem 1rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: center; box-shadow: 0 4px 10px rgba(30, 58, 138, 0.2); }
+    .status-badge { display: inline-flex; align-items: center; background-color: #d1fae5; color: #065f46; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.85rem; font-weight: 600; margin-top: 0.5rem; }
+    .status-dot { height: 8px; width: 8px; background-color: #10b981; border-radius: 50%; display: inline-block; margin-right: 6px; }
+    .service-card { background-color: #f1f5f9; border-left: 4px solid #0d9488; padding: 0.75rem; border-radius: 0 8px 8px 0; margin-bottom: 0.75rem; }
+    .service-name { font-weight: 600; color: #0f766e; font-size: 0.95rem; }
+    .service-details { font-size: 0.85rem; color: #64748b; }
+    .stChatMessage { margin-bottom: 1rem; border-radius: 12px; }
+    .stChatMessage p, .stChatMessage li, .stChatMessage span, .stChatMessage strong { color: #222222 !important; }
+    .teal-divider { height: 2px; background: linear-gradient(90deg, #0d9488 0%, rgba(13, 148, 136, 0.1) 100%); margin: 1.5rem 0; border-radius: 2px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -252,9 +169,9 @@ with st.sidebar:
     st.markdown("### 📞 Contact & Details")
     st.markdown("""
     **Zaid Bin Safi Smile Dental Clinic**
-    - 📍 *Suite 402, Medical Arts Bldg, Health City*
+    - 📍 *stree No,22 Sector ,E-5 Phaze-7, hayat Abad, Peshawar,KPk, Pakistan*
     - ☎️ *+92 (091) 9212077, 03009424345*
-    - ✉️ *contact@ZaidBinSafi-Smile.com*
+    - ✉️ *zamzamglobe@gmail.com*
     """)
     
     st.markdown('<div class="teal-divider"></div>', unsafe_allow_html=True)
@@ -312,7 +229,6 @@ if "messages" not in st.session_state:
 if "chat" not in st.session_state:
     try:
         client = get_gemini_client(api_key)
-        
         st.session_state.chat = client.chats.create(
             model="gemini-3.5-flash",
             config=types.GenerateContentConfig(
@@ -356,11 +272,10 @@ if DEMO_MODE and st.session_state.message_count >= MAX_FREE_MESSAGES and not st.
 # ================= INPUT PROCESSING AREA =================
 
 st.write("---")
-# Beautiful side-by-side Row for Input Choices right above the main container bar
 input_col1, input_col2 = st.columns([7, 2])
 
 with input_col1:
-    user_prompt = st.chat_input("Type your message here... (e.g. 'I want to book an appointment')")
+    user_prompt = st.chat_input("Type your message here...")
     if user_prompt:
         st.session_state.pending_prompt = user_prompt
         st.session_state.pending_is_voice = False
@@ -369,7 +284,6 @@ with input_col1:
         st.rerun()
 
 with input_col2:
-    # Integrated Live Voice Recorder Widget
     audio_bytes = audio_recorder(
         text="🎙️ Tap to Speak",
         recording_color="#e11d48",
@@ -380,8 +294,6 @@ with input_col2:
         audio_hash = hashlib.md5(audio_bytes).hexdigest()
         if audio_hash not in st.session_state.processed_voice_hashes:
             st.session_state.processed_voice_hashes.add(audio_hash)
-            
-            # Pack the bytes directly into a Gemini native multimodal part object
             st.session_state.pending_prompt = types.Part.from_bytes(
                 data=audio_bytes,
                 mime_type="audio/wav"
@@ -391,7 +303,7 @@ with input_col2:
             st.session_state.messages.append({"role": "user", "content": "🎙️ *[Sent a voice message]*"})
             st.rerun()
 
-# Execute the message through the Gemini Session Engine if anything is pending
+# Execute the message through the Gemini Session Engine
 if st.session_state.pending_prompt is not None:
     with st.chat_message("assistant"):
         response_placeholder = st.empty()
@@ -402,18 +314,14 @@ if st.session_state.pending_prompt is not None:
         
         try:
             payload = st.session_state.pending_prompt
-            
-            # If input is a voice file, pass a structured contextual wrapper part list
             if st.session_state.pending_is_voice:
                 context_reminder = types.Part.from_text(
                     text="\n[System Reminder: The item above is a live voice recording from the patient. Listen to it carefully, execute your tools based on their spoken instructions, and respond strictly in text format.]"
                 )
                 payload = [payload, context_reminder]
                 
-            # Send payload into the persistent turn tracking chat history container
             response = st.session_state.chat.send_message(payload)
             
-            # Loop to handle sequential tool calls requested by the model dynamically via voice/text
             while response.function_calls:
                 response_parts = []
                 for call in response.function_calls:
@@ -438,10 +346,7 @@ if st.session_state.pending_prompt is not None:
                         result_text = json.dumps({"error": str(exec_err)})
                     
                     response_parts.append(
-                        types.Part.from_function_response(
-                            name=call.name,
-                            response={"result": result_text}
-                        )
+                        types.Part.from_function_response(name=call.name, response={"result": result_text})
                     )
                 
                 time.sleep(1.2)
@@ -451,6 +356,12 @@ if st.session_state.pending_prompt is not None:
             final_text = response.text
             response_placeholder.markdown(final_text)
             st.session_state.messages.append({"role": "assistant", "content": final_text})
+            
+            # 🔥 NEW SUPERPOWER FEATURE: Generate dynamic human voice file and autoplay it!
+            with st.spinner("🔊 Generating voice response..."):
+                voice_reply_file = generate_sadaf_voice(final_text, selected_lang)
+                if voice_reply_file and os.path.exists(voice_reply_file):
+                    st.audio(voice_reply_file, autoplay=True)
             
         except Exception as chat_err:
             response_placeholder.markdown(f"⚠️ **Error generating response:** {chat_err}")
