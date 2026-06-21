@@ -29,24 +29,22 @@ load_dotenv()
 def get_gemini_client(api_key: str):
     return genai.Client(api_key=api_key)
 
-# Helper function to generate premium natural voice reply asynchronously
-def generate_sadaf_voice(text, lang):
-    # Select the most natural human female voice based on language framework
+# Helper function to generate premium natural voice reply asynchronously with unique filename
+def generate_sadaf_voice(text, lang, filename):
     if lang == "English":
         voice_model = "en-US-EmmaNeural"
     elif lang == "العربية (Arabic)":
         voice_model = "ar-AE-FatimaNeural"
     else:
-        voice_model = "ur-PK-UzmaNeural" # Uzma reads Urdu & Roman Urdu with beautiful realism
+        voice_model = "ur-PK-UzmaNeural" # Beautiful natural Pakistani female accent
         
     async def save_audio():
         communicate = edge_tts.Communicate(text, voice_model)
-        await communicate.save("sadaf_reply.mp3")
+        await communicate.save(filename)
         
     try:
-        # Run the async loop inside Streamlit's sync runtime environment
         asyncio.run(save_audio())
-        return "sadaf_reply.mp3"
+        return filename
     except Exception as voice_err:
         st.warning(f"🎙️ Voice generation skipped: {voice_err}")
         return None
@@ -169,9 +167,9 @@ with st.sidebar:
     st.markdown("### 📞 Contact & Details")
     st.markdown("""
     **Zaid Bin Safi Smile Dental Clinic**
-    - 📍 *stree No,22 Sector ,E-5 Phaze-7, hayat Abad, Peshawar,KPk, Pakistan*
+    - 📍 *Suite 402, Medical Arts Bldg, Health City*
     - ☎️ *+92 (091) 9212077, 03009424345*
-    - ✉️ *zamzamglobe@gmail.com*
+    - ✉️ *contact@ZaidBinSafi-Smile.com*
     """)
     
     st.markdown('<div class="teal-divider"></div>', unsafe_allow_html=True)
@@ -197,14 +195,6 @@ with st.sidebar:
         """, unsafe_allow_html=True)
 
 # ================= MAIN WORKSPACE =================
-
-# Header Banner
-st.markdown("""
-<div class="main-header">
-    <h1>🦷 Zaid Bin Safi Smile Dental Clinic</h1>
-    <p>Welcome! Connect with Sadaf, our dental receptionist, to book cleanings, check slots, or manage appointments.</p>
-</div>
-""", unsafe_allow_html=True)
 
 # Initialize Session State values
 if "message_count" not in st.session_state:
@@ -249,10 +239,17 @@ if "chat" not in st.session_state:
         st.error(f"Failed to initialize Gemini Client: {init_err}")
         st.stop()
 
-# Display current chat history
+# 🔄 RENDER CHAT HISTORY (With Smart Audio Persistence Integration)
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        # Check if this specific historical message contains an attached audio file note
+        if "voice" in message and message["voice"] and os.path.exists(message["voice"]):
+            if message.get("autoplay_triggered", False):
+                st.audio(message["voice"], autoplay=True)
+                message["autoplay_triggered"] = False # Flag lowered instantly after first rendering loop execution!
+            else:
+                st.audio(message["voice"], autoplay=False)
 
 # ====== DEMO MODE SECURITY GUARD ======
 DEMO_MODE = True  
@@ -303,7 +300,7 @@ with input_col2:
             st.session_state.messages.append({"role": "user", "content": "🎙️ *[Sent a voice message]*"})
             st.rerun()
 
-# Execute the message through the Gemini Session Engine
+# Execute the message through the Gemini Session Engine if anything is pending
 if st.session_state.pending_prompt is not None:
     with st.chat_message("assistant"):
         response_placeholder = st.empty()
@@ -352,16 +349,21 @@ if st.session_state.pending_prompt is not None:
                 time.sleep(1.2)
                 response = st.session_state.chat.send_message(response_parts)
             
-            # Render final text response
+            # Extract final text response
             final_text = response.text
             response_placeholder.markdown(final_text)
+            
+            # Save base response text straight into state history arrays
             st.session_state.messages.append({"role": "assistant", "content": final_text})
             
-            # 🔥 NEW SUPERPOWER FEATURE: Generate dynamic human voice file and autoplay it!
-            with st.spinner("🔊 Generating voice response..."):
-                voice_reply_file = generate_sadaf_voice(final_text, selected_lang)
-                if voice_reply_file and os.path.exists(voice_reply_file):
-                    st.audio(voice_reply_file, autoplay=True)
+            # 🔥 PERSISTED AUTOPLAY VOICE GENERATION LOOP ENGINE
+            unique_audio_filename = f"sadaf_voice_{int(time.time())}.mp3"
+            voice_reply_file = generate_sadaf_voice(final_text, selected_lang, unique_audio_filename)
+            
+            if voice_reply_file and os.path.exists(voice_reply_file):
+                # Attach the unique filename parameters into the persisted state message loop dictionary structure
+                st.session_state.messages[-1]["voice"] = voice_reply_file
+                st.session_state.messages[-1]["autoplay_triggered"] = True
             
         except Exception as chat_err:
             response_placeholder.markdown(f"⚠️ **Error generating response:** {chat_err}")
@@ -370,4 +372,4 @@ if st.session_state.pending_prompt is not None:
         # Reset values to cleanly conclude the cycle container
         st.session_state.pending_prompt = None
         st.session_state.pending_is_voice = False
-        st.rerun()
+        st.rerun() # This rerun will cleanly trigger the history renderer above, catching the audio player perfectly!
