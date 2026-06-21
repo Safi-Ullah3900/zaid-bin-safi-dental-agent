@@ -84,15 +84,16 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # System Prompt detailing Sadaf's Receptionist guidelines
+# 📍 UPDATED: Real Clinic Address & Real Gmail Credentials configured below for AI Engine
 SYSTEM_INSTRUCTIONS = """
 You are Sadaf, the friendly, empathetic, and highly organized dental receptionist at "Zaid Bin Safi Smile Dental Clinic".
 Your primary goal is to help patients book, look up, and cancel appointments, and answer questions about clinic services, pricing, and business hours.
 
 Here is the clinic information you MUST use directly to answer patient queries (do not call tools to check this static info):
 - Clinic Name: Zaid Bin Safi Smile Dental Clinic
-- Address: Suite 402, Medical Arts Building, Downtown Health City
+- Address: Suite 402, Medical Arts Building, University Road, Peshawar
 - Phone: +92 (091) 9212077, 03009424345
-- Email: contact@ZaidBinSafi-Smile.com
+- Email: zaidbinsafi.dental@gmail.com
 - Business Hours:
   * Monday to Friday: 9:00 AM - 5:00 PM
   * Saturday: 9:00 AM - 1:00 PM
@@ -164,12 +165,13 @@ with st.sidebar:
             st.stop()
             
     # Clinic Details Card
+    # 📍 UPDATED: Visual Sidebar display synchronized with Real Address & Official Gmail account
     st.markdown("### 📞 Contact & Details")
     st.markdown("""
     **Zaid Bin Safi Smile Dental Clinic**
-    - 📍 *Suite 402, Medical Arts Bldg, Health City*
+    - 📍 *Suite 402, Medical Arts Bldg, University Road, Peshawar*
     - ☎️ *+92 (091) 9212077, 03009424345*
-    - ✉️ *contact@ZaidBinSafi-Smile.com*
+    - ✉️ *zaidbinsafi.dental@gmail.com*
     """)
     
     st.markdown('<div class="teal-divider"></div>', unsafe_allow_html=True)
@@ -243,11 +245,10 @@ if "chat" not in st.session_state:
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
-        # Check if this specific historical message contains an attached audio file note
         if "voice" in message and message["voice"] and os.path.exists(message["voice"]):
             if message.get("autoplay_triggered", False):
                 st.audio(message["voice"], autoplay=True)
-                message["autoplay_triggered"] = False # Flag lowered instantly after first rendering loop execution!
+                message["autoplay_triggered"] = False
             else:
                 st.audio(message["voice"], autoplay=False)
 
@@ -361,7 +362,6 @@ if st.session_state.pending_prompt is not None:
             voice_reply_file = generate_sadaf_voice(final_text, selected_lang, unique_audio_filename)
             
             if voice_reply_file and os.path.exists(voice_reply_file):
-                # Attach the unique filename parameters into the persisted state message loop dictionary structure
                 st.session_state.messages[-1]["voice"] = voice_reply_file
                 st.session_state.messages[-1]["autoplay_triggered"] = True
             
@@ -369,7 +369,6 @@ if st.session_state.pending_prompt is not None:
             response_placeholder.markdown(f"⚠️ **Error generating response:** {chat_err}")
             st.session_state.messages.append({"role": "assistant", "content": f"Sorry, I encountered an error: {chat_err}"})
             
-        # Reset values to cleanly conclude the cycle container
         st.session_state.pending_prompt = None
         st.session_state.pending_is_voice = False
-        st.rerun() # This rerun will cleanly trigger the history renderer above, catching the audio player perfectly!
+        st.rerun()
