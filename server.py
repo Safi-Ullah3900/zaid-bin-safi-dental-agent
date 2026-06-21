@@ -48,14 +48,15 @@ def save_db(data: list):
 @mcp.tool
 def get_clinic_info() -> str:
     """
-    Get information about Bright Smile Dental Clinic, including address, phone number,
+    Get information about Zaid Bin Safi Smile Dental Clinic, including address, phone number,
     business hours, and services offered with their prices and durations.
     """
+    # 📍 UPDATED: Real Clinic Database Profile aligned with live environment properties
     info = {
-        "name": "Bright Smile Dental Clinic",
-        "address": "Suite 402, Medical Arts Building, Downtown Health City",
-        "phone": "+1 (555) 123-4567",
-        "email": "contact@brightsmiledental.com",
+        "name": "Zaid Bin Safi Smile Dental Clinic",
+        "address": "Street No 22, Sector E-5, Hayatabad, Peshawar",
+        "phone": "+92 (091) 9212077, 03009424345",
+        "email": "zamzamglobe@gmail.com",
         "hours": {day: (f"{times['open']} to {times['close']}" if times else "Closed") for day, times in CLINIC_HOURS.items()},
         "services": CLINIC_SERVICES
     }
@@ -78,7 +79,7 @@ def get_available_slots(date_str: str) -> str:
     hours = CLINIC_HOURS.get(day_name)
     
     if not hours:
-        return json.dumps({"message": f"Bright Smile Dental Clinic is closed on Sundays ({date_str})."})
+        return json.dumps({"message": f"Zaid Bin Safi Smile Dental Clinic is closed on Sundays ({date_str})."})
         
     open_time_str = hours["open"]
     close_time_str = hours["close"]
@@ -251,7 +252,6 @@ def find_appointments_by_phone(patient_phone: str) -> str:
         patient_phone: The phone number of the patient.
     """
     appointments = load_db()
-    # Normalize phone numbers for comparison (keep digits only)
     def normalize(p):
         return ''.join(c for c in p if c.isdigit())
         
