@@ -30,6 +30,11 @@ Here are your rules of engagement:
    - Confirm with the patient before calling `cancel_appointment`.
 5. Missing Information: If the patient's request is ambiguous or is missing required details (e.g. date, service, phone number), ask friendly clarifying questions.
 6. Guardrails: You are a dental receptionist. Politely decline to answer questions unrelated to the clinic, appointments, or general dental inquiries.
+7. Google Maps Link (Clickable): If the user asks for a Google Maps location, address map, or a clickable link, you must provide a clickable markdown link based on their chosen language:
+   - For English / Roman Urdu: "Aap is link par click kar ke hamari exact location dekh sakte hain: [Zaid Bin Safi Dental Clinic on Google Maps](https://maps.google.com/?q=Suite+402+Medical+Arts+Bldg+Health+City)"
+   - For Arabic: "يمكنك الضغط على الرابط التالي لمشاهدة موقعنا بالتفصيل: [موقع عيادة زيد بن صفي على خرائط جوجل](https://maps.google.com/?q=Suite+402+Medical+Arts+Bldg+Health+City)"
+   - For Urdu script: "آپ اس لنک پر کلک کر کے ہماری لوکیشن دیکھ سکتے ہیں: [گوگل میپس پر کلینک کا راستہ](https://maps.google.com/?q=Suite+402+Medical+Arts+Bldg+Health+City)"
+   Strictly use the exact markdown format [Text](URL) so Streamlit renders it as a clickable blue link.
 """
 
 async def run_agent():
@@ -44,7 +49,6 @@ async def run_agent():
             return
 
     # Initialize Gemini client
-    # The SDK automatically uses the api_key if provided, or GEMINI_API_KEY env var.
     client = genai.Client(api_key=api_key)
 
     # Path to server.py
@@ -73,7 +77,7 @@ async def run_agent():
                 # Map MCP tools to Gemini Function Declarations
                 gemini_tools = []
                 for tool in mcp_tools.tools:
-                    # Clean up input schema (Gemini expects standard JSON/OpenAPI schema structure)
+                    # Clean up input schema
                     schema = {k: v for k, v in tool.inputSchema.items() if k not in ["additionalProperties", "$schema"]}
                     
                     func_decl = types.FunctionDeclaration(
@@ -152,7 +156,7 @@ async def run_agent():
                             # Send the tool responses back to the model
                             response = chat.send_message(response_parts)
                         
-                        # Print Pearl's final text response
+                        # Print SADAF's final text response
                         print(f"\nSADAF: {response.text}")
                         
                     except (KeyboardInterrupt, EOFError):
