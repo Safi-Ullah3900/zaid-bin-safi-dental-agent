@@ -84,7 +84,6 @@ st.markdown("""
     
     section[data-testid="stSidebar"] h1, 
     section[data-testid="stSidebar"] h2, 
-    section[data-testid="stSidebar"] h3,
     section[data-testid="stSidebar"] h4 {
         color: #0f766e !important;
     }
@@ -98,13 +97,6 @@ st.markdown("""
         margin-bottom: 1.5rem;
         text-align: center;
         box-shadow: 0 4px 10px rgba(30, 58, 138, 0.2);
-    }
-    
-    /* Explicitly make the dashboard heading inside the blue banner clear white */
-    .sidebar-header h3 {
-        color: #ffffff !important;
-        font-weight: 700 !important;
-        margin-bottom: 0.5rem !important;
     }
     
     /* Status Indicator Badge */
@@ -217,13 +209,11 @@ Rules of engagement:
 """
 
 # ================= SIDEBAR CONFIGURATION =================
-# 🌐 Sidebar mein language switches
 selected_lang = st.sidebar.radio(
     "🌐 Select Language / زبان منتخب کریں",
     ["Default (Auto)", "English", "Roman Urdu", "العربية (Arabic)"]
 )
 
-# Language instructions jo backend prompt ke sath attach hongi
 lang_instruction = ""
 if selected_lang == "English":
     lang_instruction = "\n[System Force: Client selected English. Respond strictly in English.]"
@@ -233,9 +223,10 @@ elif selected_lang == "العربية (Arabic)":
     lang_instruction = "\n[System Force: Client selected Arabic. Respond strictly in professional Arabic language.]"
 
 with st.sidebar:
+    # 🌟 FIXED BANNER: Changed from <h3> to inline styled <div> to force high-visibility white text
     st.markdown("""
     <div class="sidebar-header">
-        <h3>🏥 Clinic Dashboard</h3>
+        <div style="color: #ffffff !important; font-size: 1.35rem; font-weight: 700; margin-bottom: 0.4rem; font-family: 'Inter', sans-serif;">🏥 Clinic Dashboard</div>
         <div class="status-badge">
             <span class="status-dot"></span>Sadaf is Online
         </div>
@@ -312,7 +303,6 @@ if "messages" not in st.session_state:
 # Setup Gemini client & chat session
 if "chat" not in st.session_state:
     try:
-        # Load the globally cached client
         client = get_gemini_client(api_key)
         
         st.session_state.chat = client.chats.create(
