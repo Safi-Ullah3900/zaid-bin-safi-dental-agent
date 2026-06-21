@@ -1,9 +1,12 @@
 import streamlit as st
 import os
 import json
+import hashlib
+import time
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from audio_recorder_streamlit import audio_recorder
 
 # Import the core dental tools directly from server.py to reuse business logic and database
 from server import (
@@ -223,7 +226,6 @@ elif selected_lang == "العربية (Arabic)":
     lang_instruction = "\n[System Force: Client selected Arabic. Respond strictly in professional Arabic language.]"
 
 with st.sidebar:
-    # 🌟 FIXED BANNER: Changed from <h3> to inline styled <div> to force high-visibility white text
     st.markdown("""
     <div class="sidebar-header">
         <div style="color: #ffffff !important; font-size: 1.35rem; font-weight: 700; margin-bottom: 0.4rem; font-family: 'Inter', sans-serif;">🏥 Clinic Dashboard</div>
@@ -292,6 +294,12 @@ if "message_count" not in st.session_state:
     st.session_state.message_count = 0
 if "is_unlocked" not in st.session_state:
     st.session_state.is_unlocked = False
+if "processed_voice_hashes" not in st.session_state:
+    st.session_state.processed_voice_hashes = set()
+if "pending_prompt" not in st.session_state:
+    st.session_state.pending_prompt = None
+if "pending_is_voice" not in st.session_state:
+    st.session_state.pending_is_voice = False
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
@@ -345,20 +353,67 @@ if DEMO_MODE and st.session_state.message_count >= MAX_FREE_MESSAGES and not st.
         st.error("Wrong Password! Try again.")
     st.stop()  
 
-# User input & Response Generation
-if user_prompt := st.chat_input("Type your message here... (e.g. 'I want to book an appointment')"):
-    st.session_state.message_count += 1  
-    st.session_state.messages.append({"role": "user", "content": user_prompt})
-    with st.chat_message("user"):
-        st.markdown(user_prompt)
-        
+# ================= INPUT PROCESSING AREA =================
+
+st.write("---")
+# Beautiful side-by-side Row for Input Choices right above the main container bar
+input_col1, input_col2 = st.columns([7, 2])
+
+with input_col1:
+    user_prompt = st.chat_input("Type your message here... (e.g. 'I want to book an appointment')")
+    if user_prompt:
+        st.session_state.pending_prompt = user_prompt
+        st.session_state.pending_is_voice = False
+        st.session_state.message_count += 1
+        st.session_state.messages.append({"role": "user", "content": user_prompt})
+        st.rerun()
+
+with input_col2:
+    # Integrated Live Voice Recorder Widget
+    audio_bytes = audio_recorder(
+        text="🎙️ Tap to Speak",
+        recording_color="#e11d48",
+        neutral_color="#0d9488",
+        icon_size="1x"
+    )
+    if audio_bytes:
+        audio_hash = hashlib.md5(audio_bytes).hexdigest()
+        if audio_hash not in st.session_state.processed_voice_hashes:
+            st.session_state.processed_voice_hashes.add(audio_hash)
+            
+            # Pack the bytes directly into a Gemini native multimodal part object
+            st.session_state.pending_prompt = types.Part.from_bytes(
+                data=audio_bytes,
+                mime_type="audio/wav"
+            )
+            st.session_state.pending_is_voice = True
+            st.session_state.message_count += 1
+            st.session_state.messages.append({"role": "user", "content": "🎙️ *[Sent a voice message]*"})
+            st.rerun()
+
+# Execute the message through the Gemini Session Engine if anything is pending
+if st.session_state.pending_prompt is not None:
     with st.chat_message("assistant"):
         response_placeholder = st.empty()
-        response_placeholder.markdown("*Sadaf is typing...*")
+        if st.session_state.pending_is_voice:
+            response_placeholder.markdown("*Sadaf is listening and processing your voice note...*")
+        else:
+            response_placeholder.markdown("*Sadaf is typing...*")
         
         try:
-            response = st.session_state.chat.send_message(user_prompt)
+            payload = st.session_state.pending_prompt
             
+            # If input is a voice file, pass a structured contextual wrapper part list
+            if st.session_state.pending_is_voice:
+                context_reminder = types.Part.from_text(
+                    text="\n[System Reminder: The item above is a live voice recording from the patient. Listen to it carefully, execute your tools based on their spoken instructions, and respond strictly in text format.]"
+                )
+                payload = [payload, context_reminder]
+                
+            # Send payload into the persistent turn tracking chat history container
+            response = st.session_state.chat.send_message(payload)
+            
+            # Loop to handle sequential tool calls requested by the model dynamically via voice/text
             while response.function_calls:
                 response_parts = []
                 for call in response.function_calls:
@@ -389,10 +444,10 @@ if user_prompt := st.chat_input("Type your message here... (e.g. 'I want to book
                         )
                     )
                 
-                import time
                 time.sleep(1.2)
                 response = st.session_state.chat.send_message(response_parts)
             
+            # Render final text response
             final_text = response.text
             response_placeholder.markdown(final_text)
             st.session_state.messages.append({"role": "assistant", "content": final_text})
@@ -400,3 +455,8 @@ if user_prompt := st.chat_input("Type your message here... (e.g. 'I want to book
         except Exception as chat_err:
             response_placeholder.markdown(f"⚠️ **Error generating response:** {chat_err}")
             st.session_state.messages.append({"role": "assistant", "content": f"Sorry, I encountered an error: {chat_err}"})
+            
+        # Reset values to cleanly conclude the cycle container
+        st.session_state.pending_prompt = None
+        st.session_state.pending_is_voice = False
+        st.rerun()
