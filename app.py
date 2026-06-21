@@ -97,6 +97,14 @@ st.markdown("""
         border-radius: 12px;
         margin-bottom: 1.5rem;
         text-align: center;
+        box-shadow: 0 4px 10px rgba(30, 58, 138, 0.2);
+    }
+    
+    /* Explicitly make the dashboard heading inside the blue banner clear white */
+    .sidebar-header h3 {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        margin-bottom: 0.5rem !important;
     }
     
     /* Status Indicator Badge */
@@ -141,7 +149,7 @@ st.markdown("""
         color: #64748b;
     }
     
-    /* Message styling override (Streamlit default messages look good but we add spacing) */
+    /* Message styling override */
     .stChatMessage {
         margin-bottom: 1rem;
         border-radius: 12px;
@@ -201,6 +209,11 @@ Rules of engagement:
    - Confirm with the patient before calling `cancel_appointment`.
 5. Missing Information: If the patient's request is ambiguous or is missing required details (e.g. date, service, phone number), ask friendly clarifying questions.
 6. Guardrails: You are a dental receptionist. Politely decline to answer questions unrelated to the clinic, appointments, or general dental inquiries.
+7. Google Maps Link (Clickable): If the user asks for a Google Maps location, address map, or a clickable link, you must provide a clickable markdown link based on their chosen language:
+   - For English / Roman Urdu: "Aap is link par click kar ke hamari exact location dekh sakte hain: [Zaid Bin Safi Dental Clinic on Google Maps](https://maps.google.com/?q=Suite+402+Medical+Arts+Bldg+Health+City)"
+   - For Arabic: "يمكنك الضغط على الرابط التالي لمشاهدة موقعنا بالتفصيل: [موقع عيادة زيد بن صفي على خرائط جوجل](https://maps.google.com/?q=Suite+402+Medical+Arts+Bldg+Health+City)"
+   - For Urdu script: "آپ اس لنک پر کلک کر کے ہماری لوکیشن دیکھ سکتے ہیں: [گوگل میپس پر کلینک کا راستہ](https://maps.google.com/?q=Suite+402+Medical+Arts+Bldg+Health+City)"
+   Strictly use the exact markdown format [Text](URL) so Streamlit renders it as a clickable blue link.
 """
 
 # ================= SIDEBAR CONFIGURATION =================
@@ -218,10 +231,11 @@ elif selected_lang == "Roman Urdu":
     lang_instruction = "\n[System Force: Client selected Roman Urdu. Respond strictly in Roman Urdu/Hinglish.]"
 elif selected_lang == "العربية (Arabic)":
     lang_instruction = "\n[System Force: Client selected Arabic. Respond strictly in professional Arabic language.]"
+
 with st.sidebar:
     st.markdown("""
     <div class="sidebar-header">
-        <h3 style="color: Dark Blue; margin: 0; font-size: 1.3rem;">🏥 Clinic Dashboard</h3>
+        <h3>🏥 Clinic Dashboard</h3>
         <div class="status-badge">
             <span class="status-dot"></span>Sadaf is Online
         </div>
@@ -283,7 +297,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Initialize Session State values
-# Demo counter aur lock variables initialize karein
 if "message_count" not in st.session_state:
     st.session_state.message_count = 0
 if "is_unlocked" not in st.session_state:
@@ -302,11 +315,10 @@ if "chat" not in st.session_state:
         # Load the globally cached client
         client = get_gemini_client(api_key)
         
-        # We define tools using direct imports. We disable automatic function calling to stagger requests
         st.session_state.chat = client.chats.create(
             model="gemini-3.5-flash",
             config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_INSTRUCTIONS,
+                system_instruction=SYSTEM_INSTRUCTIONS + lang_instruction,
                 tools=[
                     get_clinic_info,
                     get_available_slots,
@@ -316,7 +328,6 @@ if "chat" not in st.session_state:
                     find_appointments_by_phone
                 ],
                 temperature=0.7,
-                # Disable automatic calling to run manual execution with a delay stagger
                 automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
             )
         )
@@ -328,8 +339,9 @@ if "chat" not in st.session_state:
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+
 # ====== DEMO MODE SECURITY GUARD ======
-DEMO_MODE = True  # Deal final hone par isey False kar dena bas!
+DEMO_MODE = True  
 MAX_FREE_MESSAGES = 10
 
 if DEMO_MODE and st.session_state.message_count >= MAX_FREE_MESSAGES and not st.session_state.is_unlocked:
@@ -341,31 +353,27 @@ if DEMO_MODE and st.session_state.message_count >= MAX_FREE_MESSAGES and not st.
         st.rerun()
     elif input_pass:
         st.error("Wrong Password! Try again.")
-    st.stop()  # 🔥 Yeh line niche wale chat box ko render hi nahi hone degi jab tak lock na khule!
+    st.stop()  
+
 # User input & Response Generation
 if user_prompt := st.chat_input("Type your message here... (e.g. 'I want to book an appointment')"):
-    st.session_state.message_count += 1  # 🌟 Counter ko +1 karne ke liye
-    # Render user prompt
+    st.session_state.message_count += 1  
     st.session_state.messages.append({"role": "user", "content": user_prompt})
     with st.chat_message("user"):
         st.markdown(user_prompt)
         
-    # Generate response using Sadaf
     with st.chat_message("assistant"):
         response_placeholder = st.empty()
         response_placeholder.markdown("*Sadaf is typing...*")
         
         try:
-            # Send message to Gemini. We manually handle tool calls to implement rate limit safeguards
             response = st.session_state.chat.send_message(user_prompt)
             
-            # Loop to handle sequential tool calls requested by the model
             while response.function_calls:
                 response_parts = []
                 for call in response.function_calls:
                     response_placeholder.markdown(f"*Sadaf is accessing tools ({call.name})...*")
                     
-                    # Execute tool locally
                     try:
                         if call.name == "get_clinic_info":
                             result_text = get_clinic_info()
@@ -391,18 +399,12 @@ if user_prompt := st.chat_input("Type your message here... (e.g. 'I want to book
                         )
                     )
                 
-                # Rate limit guard: enforce a small staggering delay between sequential calls
                 import time
                 time.sleep(1.2)
-                
-                # Send tool results back to Gemini API
                 response = st.session_state.chat.send_message(response_parts)
             
-            # Render final text response
             final_text = response.text
             response_placeholder.markdown(final_text)
-            
-            # Save response to history
             st.session_state.messages.append({"role": "assistant", "content": final_text})
             
         except Exception as chat_err:
