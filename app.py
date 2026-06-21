@@ -91,9 +91,9 @@ Your primary goal is to help patients book, look up, and cancel appointments, an
 
 Here is the clinic information you MUST use directly to answer patient queries (do not call tools to check this static info):
 - Clinic Name: Zaid Bin Safi Smile Dental Clinic
-- Address: Suite 402, Medical Arts Building, University Road, Peshawar
-- Phone: +92 (091) 9212077, 03009424345
-- Email: zaidbinsafi.dental@gmail.com
+- Street No 22 sector E-5 hayat Abad kyhber pakhtunkhwa Peshawar
+- Phone: (091) 9212077, 03009424345
+- Email: zamzamglobe@gmail.com
 - Business Hours:
   * Monday to Friday: 9:00 AM - 5:00 PM
   * Saturday: 9:00 AM - 1:00 PM
@@ -169,9 +169,9 @@ with st.sidebar:
     st.markdown("### 📞 Contact & Details")
     st.markdown("""
     **Zaid Bin Safi Smile Dental Clinic**
-    - 📍 *Suite 402, Medical Arts Bldg, University Road, Peshawar*
+    - 📍 *street No,22, sector,E-5, hayat Abad,kyhber pakhtunkhwa peshawar*
     - ☎️ *+92 (091) 9212077, 03009424345*
-    - ✉️ *zaidbinsafi.dental@gmail.com*
+    - ✉️ *zamzamglobe@gmail.com*
     """)
     
     st.markdown('<div class="teal-divider"></div>', unsafe_allow_html=True)
